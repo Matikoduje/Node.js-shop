@@ -2,35 +2,46 @@ const Product = require("../models/product");
 const Cart = require("../models/cart");
 
 exports.getProducts = (req, res, next) => {
-  Product.fetchAll((products) => {
-    res.render("shop/product-list", {
-      prods: products,
-      docTitle: "All Products",
-      path: "/products",
+  Product.fetchAll()
+    .then(([rows, fieldData]) => {
+      res.render("shop/product-list", {
+        prods: rows,
+        docTitle: "All Products",
+        path: "/products",
+      });
+    })
+    .catch((err) => {
+      console.log(err);
     });
-  });
 };
 
 exports.getProduct = (req, res, next) => {
   const prodId = req.params.productId; // pobiera z url parametr productId, działa to ponieważ w rout zapisałem url product/:productId
-  Product.loadProductById(prodId, (product) => {
-    res.render("shop/product-detail", {
-      product: product,
-      docTitle:
-        typeof product === "object" ? product.title : "Product dont exist",
-      path: "/products",
+  Product.loadProductById(prodId)
+    .then(([product]) => {
+      res.render("shop/product-detail", {
+        product: product[0],
+        docTitle: product[0].title,
+        path: "/products",
+      });
+    })
+    .catch((err) => {
+      console.log(err);
     });
-  });
 };
 
 exports.getIndex = (req, res, next) => {
-  Product.fetchAll((products) => {
-    res.render("shop/index", {
-      prods: products,
-      docTitle: "Shop",
-      path: "/",
+  Product.fetchAll()
+    .then(([rows, fieldData]) => {
+      res.render("shop/index", {
+        prods: rows,
+        docTitle: "Shop",
+        path: "/",
+      });
+    })
+    .catch((err) => {
+      console.log(err);
     });
-  });
 };
 
 exports.getCart = (req, res, next) => {
@@ -51,7 +62,7 @@ exports.getCart = (req, res, next) => {
       res.render("shop/cart", {
         path: "/cart",
         docTitle: "Your Cart",
-        products: cartProducts
+        products: cartProducts,
       });
     });
   });
@@ -69,8 +80,8 @@ exports.postDeleteCartItem = (req, res, next) => {
   const productId = req.body.productId;
   Product.loadProductById(productId, (product) => {
     Cart.deleteProduct(productId, product.price);
-    res.redirect('/cart');
-  })
+    res.redirect("/cart");
+  });
 };
 
 exports.getOrders = (req, res, next) => {
