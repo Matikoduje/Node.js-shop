@@ -14,10 +14,15 @@ exports.postAddProduct = (req, res, next) => {
   const description = req.body.description;
   const price = req.body.price;
 
-  const product = new Product(null, title, imageUrl, description, price);
-
-  product
-    .save()
+  // magiczna metoda sequealizera, generowane są na bazie relacji pomiędzy tabelami. I tak przy belongTo lub
+  // hasMany user posiada metodę createProduct
+  req.user
+    .createProduct({
+      description: description,
+      imageUrl: imageUrl,
+      price: price,
+      title: title,
+    })
     .then((result) => {
       res.redirect("/");
     })
@@ -33,17 +38,19 @@ exports.getEditProduct = (req, res, next) => {
   }
 
   const productId = req.params.productId;
-  Product.loadProductById(productId, (product) => {
-    if (!product) {
+  Product.findByPk(productId)
+    .then((product) => {
+      res.render("admin/edit-product", {
+        product: product,
+        docTitle: "Edit Product",
+        path: "/admin/products",
+        editing: editMode,
+      });
+    })
+    .catch((err) => {
+      console.log(err);
       return res.redirect("/");
-    }
-    res.render("admin/edit-product", {
-      product: product,
-      docTitle: "Edit Product",
-      path: "/admin/products",
-      editing: editMode,
     });
-  });
 };
 
 exports.postEditProduct = (req, res, next) => {
@@ -53,28 +60,44 @@ exports.postEditProduct = (req, res, next) => {
   const updatedImageUrl = req.body.imageUrl;
   const updatedPrice = req.body.price;
 
-  const updatedProduct = new Product(
-    productId,
-    updatedTitle,
-    updatedImageUrl,
-    updatedDescription,
-    updatedPrice
-  );
-  updatedProduct.save();
-  res.redirect("/admin/products");
+  Product.update(
+    {
+      title: updatedTitle,
+      description: updatedDescription,
+      imageUrl: updatedImageUrl,
+      price: updatedPrice,
+    },
+    {
+      where: { id: productId },
+    }
+  )
+    .then((result) => {
+      res.redirect("/admin/products");
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 };
 
 exports.postDeleteProduct = (req, res, next) => {
   const productId = req.body.productId;
-  Product.deleteProductById(productId);
-  res.redirect("/admin/products");
+  Product.destroy({
+    where: { id: productId },
+  })
+    .then((result) => {
+      res.redirect("/admin/products");
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 };
 
 exports.getProducts = (req, res, next) => {
-  Product.fetchAll()
-    .then(([rows, fieldData]) => {
+  req.user
+    .getProducts()
+    .then((products) => {
       res.render("admin/products", {
-        prods: rows,
+        prods: products,
         docTitle: "Admin Products",
         path: "/admin/products",
       });
