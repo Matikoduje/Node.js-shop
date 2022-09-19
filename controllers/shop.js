@@ -1,7 +1,7 @@
 const Product = require("../models/product");
 
 exports.getProducts = (req, res, next) => {
-  Product.findAll()
+  Product.fetchAll()
     .then((products) => {
       res.render("shop/product-list", {
         prods: products,
@@ -10,13 +10,14 @@ exports.getProducts = (req, res, next) => {
       });
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 
 exports.getProduct = (req, res, next) => {
-  const prodId = req.params.productId; // pobiera z url parametr productId, działa to ponieważ w rout zapisałem url product/:productId
-  Product.findByPk(prodId)
+  const prodId = req.params.productId;
+
+  Product.findById(prodId)
     .then((product) => {
       res.render("shop/product-detail", {
         product: product,
@@ -25,12 +26,12 @@ exports.getProduct = (req, res, next) => {
       });
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 
 exports.getIndex = (req, res, next) => {
-  Product.findAll()
+  Product.fetchAll()
     .then((products) => {
       res.render("shop/index", {
         prods: products,
@@ -39,16 +40,13 @@ exports.getIndex = (req, res, next) => {
       });
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 
 exports.getCart = (req, res, next) => {
   req.user
     .getCart()
-    .then((cart) => {
-      return cart.getProducts();
-    })
     .then((products) => {
       res.render("shop/cart", {
         path: "/cart",
@@ -57,114 +55,57 @@ exports.getCart = (req, res, next) => {
       });
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 
 exports.postCart = (req, res, next) => {
   const productId = req.body.productId;
-  let fetchedCart;
-  let newQuantity = 1;
-
-  req.user
-    .getCart()
-    .then((cart) => {
-      fetchedCart = cart;
-      return cart.getProducts({ where: { id: productId } });
-    })
-    .then((products) => {
-      let product;
-      if (products.length > 0) {
-        product = products[0];
-      }
-      if (product) {
-        const oldQuantity = product.cartItem.quantity;
-        newQuantity = oldQuantity + 1;
-        return product;
-      }
-      return Product.findByPk(productId);
-    })
+  Product.findById(productId)
     .then((product) => {
-      return fetchedCart.addProduct(product, {
-        through: { quantity: newQuantity },
-      });
+      req.user.addToCart(product);
     })
     .then(() => {
       res.redirect("/cart");
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 
 exports.postDeleteCartItem = (req, res, next) => {
   const productId = req.body.productId;
-  let fetchedCart;
-
   req.user
-    .getCart()
-    .then((cart) => {
-      fetchedCart = cart;
-      return cart.getProducts({ where: { id: productId } });
-    })
-    .then((products) => {
-      let product = products[0];
-      return fetchedCart.removeProduct(product);
-    })
+    .removeCartItem(productId)
     .then(() => {
       res.redirect("/cart");
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 
 exports.getOrders = (req, res, next) => {
   req.user
-    .getOrders({include: ['products']})
+    .getOrders()
     .then((orders) => {
       res.render("shop/orders", {
         path: "/orders",
         docTitle: "Your Orders",
-        orders: orders
+        orders: orders,
       });
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 
 exports.postOrder = (req, res, next) => {
-  let fetchedProducts;
-  let fetchedCart;
-
   req.user
-    .getCart()
-    .then((cart) => {
-      fetchedCart = cart;
-      return cart.getProducts();
-    })
-    .then((products) => {
-      fetchedProducts = products;
-      return req.user.createOrder();
-    })
-    .then((order) => {
-      return order.addProducts(
-        fetchedProducts.map((product) => {
-          // .map zwraca nową tablicę, która jest zmodyfikowaną o kod w funkcji starą tablicą. Dodaliśmy informacje o ilości produktów w zamówieniu. Skopiowaną z cartItem.
-          product.orderItem = { quantity: product.cartItem.quantity };
-          return product;
-        })
-      );
-    })
-    .then((result) => {
-      return fetchedCart.setProducts(null);
-    })
-    .then((result) => {
-      res.redirect("/orders");
-    })
+    .addOrder()
+    .then((result) => res.redirect("/orders"))
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 

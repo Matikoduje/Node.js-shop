@@ -14,42 +14,40 @@ exports.postAddProduct = (req, res, next) => {
   const description = req.body.description;
   const price = req.body.price;
 
-  // magiczna metoda sequealizera, generowane są na bazie relacji pomiędzy tabelami. I tak przy belongTo lub
-  // hasMany user posiada metodę createProduct
-  req.user
-    .createProduct({
-      description: description,
-      imageUrl: imageUrl,
-      price: price,
-      title: title,
-    })
-    .then((result) => {
+  const product = new Product(title, price, description, imageUrl, null, req.user._id);
+
+  product
+    .save()
+    .then(() => {
       res.redirect("/");
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 
 exports.getEditProduct = (req, res, next) => {
-  const editMode = req.query.edit; // wczytuje dane dołączone jako query do ścieżki. Po ?zmienna=wartość
+  const editMode = req.query.edit;
   if (!editMode) {
     return res.redirect("/");
   }
 
   const productId = req.params.productId;
-  Product.findByPk(productId)
+
+  Product.findById(productId)
     .then((product) => {
+      if (!product) {
+        return res.redirect("/");
+      }
       res.render("admin/edit-product", {
         product: product,
         docTitle: "Edit Product",
-        path: "/admin/products",
+        path: "/admin/product",
         editing: editMode,
       });
     })
     .catch((err) => {
-      console.log(err);
-      return res.redirect("/");
+      throw err;
     });
 };
 
@@ -60,41 +58,38 @@ exports.postEditProduct = (req, res, next) => {
   const updatedImageUrl = req.body.imageUrl;
   const updatedPrice = req.body.price;
 
-  Product.update(
-    {
-      title: updatedTitle,
-      description: updatedDescription,
-      imageUrl: updatedImageUrl,
-      price: updatedPrice,
-    },
-    {
-      where: { id: productId },
-    }
-  )
-    .then((result) => {
+  const product = new Product(
+    updatedTitle,
+    updatedPrice,
+    updatedDescription,
+    updatedImageUrl,
+    productId
+  );
+
+  product
+    .save()
+    .then(() => {
       res.redirect("/admin/products");
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 
 exports.postDeleteProduct = (req, res, next) => {
   const productId = req.body.productId;
-  Product.destroy({
-    where: { id: productId },
-  })
-    .then((result) => {
+
+  Product.deleteProduct(productId)
+    .then(() => {
       res.redirect("/admin/products");
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
 
 exports.getProducts = (req, res, next) => {
-  req.user
-    .getProducts()
+  Product.fetchAll()
     .then((products) => {
       res.render("admin/products", {
         prods: products,
@@ -103,6 +98,6 @@ exports.getProducts = (req, res, next) => {
       });
     })
     .catch((err) => {
-      console.log(err);
+      throw err;
     });
 };
