@@ -2,7 +2,7 @@ const path = require("path");
 
 const express = require("express");
 const bodyParser = require("body-parser");
-
+const mongoose = require("mongoose");
 const app = express();
 
 app.set("view engine", "ejs");
@@ -14,14 +14,14 @@ app.use(express.static(path.join(__dirname, "public")));
 const adminRoutes = require("./routes/admin");
 const shopRoutes = require("./routes/shop");
 const httpControlers = require("./controllers/http");
+const dbConfiguration = require("./configuration/database-env-setup");
 
-const mongoConnect = require("./helpers/database").mongoConnect;
 const User = require("./models/user");
 
 app.use((req, res, next) => {
-  User.findById("631c314648d8c4639f3ef809")
+  User.findById("63289f9bc9d7bb6d7c649269")
     .then((user) => {
-      req.user = new User(user.name, user.email, user.cart, user._id);
+      req.user = user;
       next();
     })
     .catch((err) => {
@@ -33,6 +33,24 @@ app.use("/admin", adminRoutes);
 app.use(shopRoutes);
 app.use(httpControlers.get404);
 
-mongoConnect(() => {
-  app.listen(3000);
-});
+mongoose
+  .connect(dbConfiguration)
+  .then(() => {
+    User.findOne().then((user) => {
+      if (!user) {
+        const user = new User({
+          name: "admin",
+          email: "admin@test.com",
+          cart: {
+            items: [],
+          },
+        });
+        user.save();
+      }
+    });
+
+    app.listen(3000);
+  })
+  .catch((err) => {
+    throw err;
+  });

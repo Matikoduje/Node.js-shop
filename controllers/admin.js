@@ -2,7 +2,7 @@ const Product = require("../models/product");
 
 exports.getAddProduct = (req, res, next) => {
   res.render("admin/edit-product", {
-    docTitle: "Add Product",
+    pageTitle: "Add Product",
     path: "/admin/add-product",
     editing: false,
   });
@@ -14,7 +14,13 @@ exports.postAddProduct = (req, res, next) => {
   const description = req.body.description;
   const price = req.body.price;
 
-  const product = new Product(title, price, description, imageUrl, null, req.user._id);
+  const product = new Product({
+    title: title,
+    imageUrl: imageUrl,
+    description: description,
+    price: price,
+    userId: req.user, // mongoose z objektu użytkownika automatycznie zapisze _id, można ręcznie dodać ._id
+  });
 
   product
     .save()
@@ -41,7 +47,7 @@ exports.getEditProduct = (req, res, next) => {
       }
       res.render("admin/edit-product", {
         product: product,
-        docTitle: "Edit Product",
+        pageTitle: "Edit Product",
         path: "/admin/product",
         editing: editMode,
       });
@@ -58,16 +64,14 @@ exports.postEditProduct = (req, res, next) => {
   const updatedImageUrl = req.body.imageUrl;
   const updatedPrice = req.body.price;
 
-  const product = new Product(
-    updatedTitle,
-    updatedPrice,
-    updatedDescription,
-    updatedImageUrl,
-    productId
-  );
-
-  product
-    .save()
+  Product.findById(productId)
+    .then((product) => {
+      product.title = updatedTitle;
+      product.description = updatedDescription;
+      product.imageUrl = updatedImageUrl;
+      product.price = updatedPrice;
+      return product.save();
+    })
     .then(() => {
       res.redirect("/admin/products");
     })
@@ -79,7 +83,7 @@ exports.postEditProduct = (req, res, next) => {
 exports.postDeleteProduct = (req, res, next) => {
   const productId = req.body.productId;
 
-  Product.deleteProduct(productId)
+  Product.findByIdAndDelete(productId)
     .then(() => {
       res.redirect("/admin/products");
     })
@@ -89,11 +93,13 @@ exports.postDeleteProduct = (req, res, next) => {
 };
 
 exports.getProducts = (req, res, next) => {
-  Product.fetchAll()
+  Product.find({})
+    // .select('title price')
+    // .populate('userId')
     .then((products) => {
       res.render("admin/products", {
         prods: products,
-        docTitle: "Admin Products",
+        pageTitle: "Admin Products",
         path: "/admin/products",
       });
     })
