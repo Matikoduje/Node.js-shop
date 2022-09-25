@@ -1,5 +1,6 @@
 const Product = require("../models/product");
 const Order = require("../models/order");
+const User = require("../models/user");
 
 exports.getProducts = (req, res, next) => {
   Product.find({})
@@ -46,7 +47,15 @@ exports.getIndex = (req, res, next) => {
 };
 
 exports.getCart = (req, res, next) => {
-  req.user
+  if (!req.session.userId) {
+    return res.render("shop/cart", {
+      path: "/cart",
+      pageTitle: "Your Cart",
+      products: [],
+    });
+  }
+
+  User.findById(req.session.userId)
     .populate("cart.items.productId")
     .then((user) => {
       return user.cart.items.map((item) => {
@@ -58,7 +67,6 @@ exports.getCart = (req, res, next) => {
       });
     })
     .then((products) => {
-      console.log(products);
       res.render("shop/cart", {
         path: "/cart",
         pageTitle: "Your Cart",
@@ -73,7 +81,13 @@ exports.postCart = (req, res, next) => {
 
   Product.findById(productId)
     .then((product) => {
-      return req.user.addToCart(product);
+      return User.findById(req.session.userId)
+        .then((user) => {
+          return user.addToCart(product);
+        })
+        .catch((err) => {
+          throw err;
+        });
     })
     .then(() => {
       res.redirect("/cart");
@@ -86,8 +100,10 @@ exports.postCart = (req, res, next) => {
 exports.postDeleteCartItem = (req, res, next) => {
   const productId = req.body.productId;
 
-  req.user
-    .deleteItemFromCart(productId)
+  User.findById(req.session.userId)
+    .then((user) => {
+      return user.deleteItemFromCart(productId);
+    })
     .then(() => {
       res.redirect("/cart");
     })
@@ -97,7 +113,7 @@ exports.postDeleteCartItem = (req, res, next) => {
 };
 
 exports.getOrders = (req, res, next) => {
-  Order.find({ "user.userId": req.user._id })
+  Order.find({ "user.userId": req.session.userId })
     .then((orders) => {
       res.render("shop/orders", {
         path: "/orders",
@@ -111,7 +127,7 @@ exports.getOrders = (req, res, next) => {
 };
 
 exports.postOrder = (req, res, next) => {
-  req.user
+  User.findById(req.session.userId)
     .populate("cart.items.productId", "-imageUrl -description -userId")
     .then((user) => {
       return user.createOrder();

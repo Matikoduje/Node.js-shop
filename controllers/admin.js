@@ -19,7 +19,7 @@ exports.postAddProduct = (req, res, next) => {
     imageUrl: imageUrl,
     description: description,
     price: price,
-    userId: req.user, // mongoose z objektu użytkownika automatycznie zapisze _id, można ręcznie dodać ._id
+    userId: req.session.userId, // mongoose z objektu użytkownika automatycznie zapisze _id, można ręcznie dodać ._id
   });
 
   product
@@ -93,14 +93,14 @@ exports.postDeleteProduct = (req, res, next) => {
 };
 
 exports.getProducts = (req, res, next) => {
-  Product.find({})
+  Product.find({userId: req.session.userId})
     // .select('title price')
     // .populate('userId')
     .then((products) => {
       res.render("admin/products", {
         prods: products,
         pageTitle: "Admin Products",
-        path: "/admin/products",
+        path: "/admin/products"
       });
     })
     .catch((err) => {
