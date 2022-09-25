@@ -6,17 +6,25 @@ const router = express.Router();
 const {
   signUpValidationRules,
   signUpValidate,
-} = require("../validators/signup-validation-rules");
+} = require("../validators/auth/signup-validation-rules");
 
 const {
   loginValidationRules,
   loginValidate,
-} = require("../validators/login-validation-rules");
+} = require("../validators/auth/login-validation-rules");
+
+const {
+  resetValidationRules,
+  resetValidate,
+} = require("../validators/auth/reset-password-validation-rules");
 
 router.get("/login", authController.getLogin);
 router.get("/signup", authController.getSignup);
 router.get("/reset", authController.getPasswordReset);
 router.get("/new-password/:token", authController.getNewPassword);
+
+router.post("/new-password", authController.setNewPassword);
+router.post("/logout", authController.postLogout);
 
 router.post(
   "/signup",
@@ -29,9 +37,14 @@ router.post(
   "/login",
   loginValidationRules(),
   loginValidate,
-  authController.postLogin);
+  authController.postLogin
+);
 
-router.post("/logout", authController.postLogout);
-router.post("/reset", authController.postPasswordReset);
-router.post("/new-password", authController.setNewPassword);
+router.post(
+  "/reset",
+  resetValidationRules(),
+  resetValidate,
+  authController.postPasswordReset
+);
+
 module.exports = router;

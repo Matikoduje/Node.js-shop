@@ -1,10 +1,22 @@
 const Product = require("../models/product");
 
+const addProductPrepareOldValues = (product) => {
+  return {
+    title: product ? product.title : "",
+    imageUrl: product ? product.imageUrl : "",
+    description: product ? product.description : "",
+    price: product ? product.price : "",
+  };
+};
+
 exports.getAddProduct = (req, res, next) => {
   res.render("admin/edit-product", {
     pageTitle: "Add Product",
     path: "/admin/add-product",
     editing: false,
+    errorMessages: [],
+    fieldsErrors: [],
+    oldInput: addProductPrepareOldValues(null),
   });
 };
 
@@ -19,7 +31,7 @@ exports.postAddProduct = (req, res, next) => {
     imageUrl: imageUrl,
     description: description,
     price: price,
-    userId: req.session.userId, // mongoose z objektu użytkownika automatycznie zapisze _id, można ręcznie dodać ._id
+    userId: req.session.userId,
   });
 
   product
@@ -46,10 +58,13 @@ exports.getEditProduct = (req, res, next) => {
         return res.redirect("/");
       }
       res.render("admin/edit-product", {
-        product: product,
+        productId: product._id,
         pageTitle: "Edit Product",
         path: "/admin/product",
         editing: editMode,
+        errorMessages: [],
+        fieldsErrors: [],
+        oldInput: addProductPrepareOldValues(product),
       });
     })
     .catch((err) => {
@@ -93,14 +108,14 @@ exports.postDeleteProduct = (req, res, next) => {
 };
 
 exports.getProducts = (req, res, next) => {
-  Product.find({userId: req.session.userId})
+  Product.find({ userId: req.session.userId })
     // .select('title price')
     // .populate('userId')
     .then((products) => {
       res.render("admin/products", {
         prods: products,
         pageTitle: "Admin Products",
-        path: "/admin/products"
+        path: "/admin/products",
       });
     })
     .catch((err) => {

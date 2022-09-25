@@ -39,6 +39,7 @@ exports.getIndex = (req, res, next) => {
         prods: products,
         pageTitle: "Shop",
         path: "/",
+        informationMessages: req.session.flash ? req.flash("information") : [],
       });
     })
     .catch((err) => {

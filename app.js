@@ -10,7 +10,7 @@ const mongoose = require("mongoose");
 const MongoDBStore = require("connect-mongodb-session")(session);
 const bodyParser = require("body-parser");
 const csrf = require("csurf");
-const flash = require('connect-flash');
+const flash = require("connect-flash");
 const app = express();
 
 const sessionStore = new MongoDBStore({
@@ -40,7 +40,7 @@ app.use(flash());
 const adminRoutes = require("./routes/admin");
 const shopRoutes = require("./routes/shop");
 const authRoutes = require("./routes/auth");
-const httpControlers = require("./controllers/http");
+const httpControllers = require("./controllers/http");
 
 app.use((req, res, next) => {
   res.locals.isAuthenticated = req.session.isLoggedIn;
@@ -53,7 +53,7 @@ app.use((req, res, next) => {
 app.use("/admin", adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);
-app.use(httpControlers.get404);
+app.use(httpControllers.get404);
 
 mongoose
   .connect(MONGO_URI)
