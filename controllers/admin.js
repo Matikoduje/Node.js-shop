@@ -14,7 +14,7 @@ exports.getAddProduct = (req, res, next) => {
     pageTitle: "Add Product",
     path: "/admin/add-product",
     editing: false,
-    errorMessages: [],
+    errorMessages: req.flash("error"),
     fieldsErrors: [],
     oldInput: addProductPrepareOldValues(null),
   });
@@ -40,22 +40,25 @@ exports.postAddProduct = (req, res, next) => {
       res.redirect("/");
     })
     .catch((err) => {
-      throw err;
+      if (err._message === "Product validation failed") {
+        req.flash("error", "Can't add new product. Product validation failed.");
+        return res.status(500).redirect("add-product");
+      }
+      res.status(500).redirect("/500");
     });
 };
 
 exports.getEditProduct = (req, res, next) => {
   const editMode = req.query.edit;
   if (!editMode) {
-    return res.redirect("/");
+    return res.redirect("/admin/products");
   }
-
   const productId = req.params.productId;
 
   Product.findById(productId)
     .then((product) => {
       if (!product) {
-        return res.redirect("/");
+        return res.redirect("/admin/products");
       }
       res.render("admin/edit-product", {
         productId: product._id,
@@ -68,7 +71,7 @@ exports.getEditProduct = (req, res, next) => {
       });
     })
     .catch((err) => {
-      throw err;
+      console.log(err);
     });
 };
 
@@ -91,7 +94,7 @@ exports.postEditProduct = (req, res, next) => {
       res.redirect("/admin/products");
     })
     .catch((err) => {
-      throw err;
+      throw new Error(err);
     });
 };
 
@@ -103,14 +106,12 @@ exports.postDeleteProduct = (req, res, next) => {
       res.redirect("/admin/products");
     })
     .catch((err) => {
-      throw err;
+      throw new Error(err);
     });
 };
 
 exports.getProducts = (req, res, next) => {
   Product.find({ userId: req.session.userId })
-    // .select('title price')
-    // .populate('userId')
     .then((products) => {
       res.render("admin/products", {
         prods: products,
@@ -119,6 +120,6 @@ exports.getProducts = (req, res, next) => {
       });
     })
     .catch((err) => {
-      throw err;
+      throw new Error(err);
     });
 };

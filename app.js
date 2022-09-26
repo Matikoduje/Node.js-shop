@@ -40,7 +40,7 @@ app.use(flash());
 const adminRoutes = require("./routes/admin");
 const shopRoutes = require("./routes/shop");
 const authRoutes = require("./routes/auth");
-const httpControllers = require("./controllers/http");
+const errorsController = require("./controllers/error");
 
 app.use((req, res, next) => {
   res.locals.isAuthenticated = req.session.isLoggedIn;
@@ -53,7 +53,8 @@ app.use((req, res, next) => {
 app.use("/admin", adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);
-app.use(httpControllers.get404);
+app.get("/500", errorsController.get500);
+app.use(errorsController.get404);
 
 mongoose
   .connect(MONGO_URI)
