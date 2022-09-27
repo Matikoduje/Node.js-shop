@@ -36,11 +36,11 @@ router.post(
   adminController.postEditProduct
 );
 
-router.post(
-  "/delete-product",
+router.delete(
+  "/product/:productId",
   isAuth,
   isProductCreator,
-  adminController.postDeleteProduct
+  adminController.deleteProduct
 );
 router.get("/products", isAuth, adminController.getProducts);
 

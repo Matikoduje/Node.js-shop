@@ -35,14 +35,14 @@ orderSchema.methods.generateInvoice = function () {
   this.items.forEach((item) => {
     totalPrice = totalPrice + item.product.price * item.quantity;
     pdfDoc
-      .fontsize(14)
+      .fontSize(14)
       .text(
         `${item.product.title} - ${item.quantity} x $${item.product.price}`
       );
   });
 
   pdfDoc.text("---------------------------");
-  pdfDoc.fontsize(18).text(`Order total price: $${totalPrice}`);
+  pdfDoc.fontSize(18).text(`Order total price: $${totalPrice}`);
 
   pdfDoc.end();
 };

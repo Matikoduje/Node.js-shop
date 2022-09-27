@@ -1,5 +1,7 @@
 const fs = require("fs");
 const path = require("path");
+const { stripeSecret } = require("../configuration/dev-env-setup");
+const stripe = require("stripe")(stripeSecret);
 
 const Product = require("../models/product");
 const Order = require("../models/order");
@@ -185,7 +187,7 @@ exports.getInvoice = (req, res, next) => {
   */
 };
 
-exports.postOrder = (req, res, next) => {
+exports.getCheckoutSuccess = (req, res, next) => {
   User.findById(req.session.userId)
     .populate("cart.items.productId", "-imageUrl -description -userId")
     .then((user) => {
@@ -200,8 +202,56 @@ exports.postOrder = (req, res, next) => {
 };
 
 exports.getCheckout = (req, res, next) => {
-  res.render("shop/checkout", {
-    path: "/checkout",
-    pageTitle: "Checkout",
-  });
+  let total = 0;
+  let products;
+
+  User.findById(req.session.userId)
+    .populate("cart.items.productId")
+    .then((user) => {
+      return user.cart.items.map((item) => {
+        return {
+          _id: item.productId._id,
+          title: item.productId.title,
+          quantity: item.quantity,
+          price: item.productId.price,
+          description: item.productId.description,
+        };
+      });
+    })
+    .then((orderProducts) => {
+      orderProducts.forEach((orderProduct) => {
+        total += orderProduct.quantity * orderProduct.price;
+      });
+      products = orderProducts;
+      return stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: products.map((p) => {
+          return {
+            price_data: {
+              unit_amount: p.price * 100,
+              currency: "usd",
+              product_data: {
+                name: p.title,
+                description: p.description,
+              },
+            },
+            quantity: p.quantity,
+          };
+        }),
+        mode: "payment",
+        success_url:
+          req.protocol + "://" + req.get("host") + "/checkout/success",
+        cancel_url: req.protocol + "://" + req.get("host") + "/checkout/cancel",
+      });
+    })
+    .then((session) => {
+      res.render("shop/checkout", {
+        path: "/checkout",
+        pageTitle: "Checkout",
+        products: products,
+        totalSum: total,
+        sessionId: session.id,
+      });
+    })
+    .catch();
 };
