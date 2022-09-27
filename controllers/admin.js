@@ -1,15 +1,18 @@
 const Product = require("../models/product");
 
+const errorHandler = require("../helpers/error-handler");
+const fileHelper = require("../helpers/file");
+
 const addProductPrepareOldValues = (product) => {
   return {
     title: product ? product.title : "",
-    imageUrl: product ? product.imageUrl : "",
     description: product ? product.description : "",
     price: product ? product.price : "",
   };
 };
 
 exports.getAddProduct = (req, res, next) => {
+  console.log(res.locals);
   res.render("admin/edit-product", {
     pageTitle: "Add Product",
     path: "/admin/add-product",
@@ -22,10 +25,11 @@ exports.getAddProduct = (req, res, next) => {
 
 exports.postAddProduct = (req, res, next) => {
   const title = req.body.title;
-  const imageUrl = req.body.imageUrl;
+  const image = req.file;
   const description = req.body.description;
   const price = req.body.price;
 
+  const imageUrl = image.path;
   const product = new Product({
     title: title,
     imageUrl: imageUrl,
@@ -44,7 +48,7 @@ exports.postAddProduct = (req, res, next) => {
         req.flash("error", "Can't add new product. Product validation failed.");
         return res.status(500).redirect("add-product");
       }
-      res.status(500).redirect("/500");
+      return errorHandler(req, res, next, err);
     });
 };
 
@@ -71,7 +75,7 @@ exports.getEditProduct = (req, res, next) => {
       });
     })
     .catch((err) => {
-      console.log(err);
+      return errorHandler(req, res, next, err);
     });
 };
 
@@ -79,14 +83,17 @@ exports.postEditProduct = (req, res, next) => {
   const productId = req.body.productId;
   const updatedTitle = req.body.title;
   const updatedDescription = req.body.description;
-  const updatedImageUrl = req.body.imageUrl;
+  const updatedImageUrl = req.file;
   const updatedPrice = req.body.price;
 
   Product.findById(productId)
     .then((product) => {
       product.title = updatedTitle;
       product.description = updatedDescription;
-      product.imageUrl = updatedImageUrl;
+      if (updatedImageUrl) {
+        fileHelper.deleteFile(product.imageUrl);
+        product.imageUrl = updatedImageUrl.path;
+      }
       product.price = updatedPrice;
       return product.save();
     })
@@ -94,19 +101,26 @@ exports.postEditProduct = (req, res, next) => {
       res.redirect("/admin/products");
     })
     .catch((err) => {
-      throw new Error(err);
+      return errorHandler(req, res, next, err);
     });
 };
 
 exports.postDeleteProduct = (req, res, next) => {
   const productId = req.body.productId;
 
-  Product.findByIdAndDelete(productId)
+  Product.findById(productId)
+    .then((product) => {
+      if (!product) {
+        return next(new Error("Product not found."));
+      }
+      fileHelper.deleteFile(product.imageUrl);
+      return Product.findByIdAndDelete(productId);
+    })
     .then(() => {
       res.redirect("/admin/products");
     })
     .catch((err) => {
-      throw new Error(err);
+      return errorHandler(req, res, next, err);
     });
 };
 
@@ -117,9 +131,10 @@ exports.getProducts = (req, res, next) => {
         prods: products,
         pageTitle: "Admin Products",
         path: "/admin/products",
+        errorMessages: req.flash("errors"),
       });
     })
     .catch((err) => {
-      throw new Error(err);
+      return errorHandler(req, res, next, err);
     });
 };

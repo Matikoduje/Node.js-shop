@@ -6,6 +6,8 @@ const emailTransporter =
 
 const User = require("../models/user");
 
+const errorHandler = require("../helpers/error-handler");
+
 /** Prepares default rendering params for get login page. */
 const loginRenderDefaultParams = (req, params) => {
   return {
@@ -72,7 +74,7 @@ exports.postLogin = (req, res) => {
         });
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
 };
 
@@ -116,7 +118,7 @@ exports.postSignup = (req, res) => {
       });
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
 };
 
@@ -147,7 +149,7 @@ exports.getNewPassword = (req, res) => {
       });
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
 };
 
@@ -196,7 +198,7 @@ exports.postPasswordReset = (req, res) => {
         });
       })
       .catch((err) => {
-        throw err;
+        return errorHandler(req, res, next, err);
       });
   });
 };
@@ -237,6 +239,6 @@ exports.setNewPassword = (req, res) => {
       res.redirect("/login");
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
 };

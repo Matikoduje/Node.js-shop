@@ -1,18 +1,43 @@
+const fs = require("fs");
+const path = require("path");
+
 const Product = require("../models/product");
 const Order = require("../models/order");
 const User = require("../models/user");
 
+const errorHandler = require("../helpers/error-handler");
+
+const prepareShopProductsParams = (req, res, isIndex, products) => {
+  return {
+    products,
+    totalProducts: res.locals.totalProducts,
+    hasNextPage: res.locals.hasNextPage,
+    hasPreviousPage: res.locals.hasPreviousPage,
+    currentPage: res.locals.currentPage,
+    nextPage: res.locals.nextPage,
+    previousPage: res.locals.previousPage,
+    lastPage: res.locals.lastPage,
+    pageTitle: isIndex ? "Shop" : "All Products",
+    path: isIndex ? "/" : "/products",
+    informationMessages: req.session.flash ? req.flash("information") : [],
+  };
+};
+
 exports.getProducts = (req, res, next) => {
+  const page = +req.query.page || 1;
+  const itemsPerPage = res.locals.itemsPerPage;
+
   Product.find({})
+    .skip((page - 1) * itemsPerPage)
+    .limit(itemsPerPage)
     .then((products) => {
-      res.render("shop/product-list", {
-        prods: products,
-        pageTitle: "All Products",
-        path: "/products",
-      });
+      res.render(
+        "shop/product-list",
+        prepareShopProductsParams(req, res, false, products)
+      );
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
 };
 
@@ -22,28 +47,33 @@ exports.getProduct = (req, res, next) => {
   Product.findById(prodId)
     .then((product) => {
       res.render("shop/product-detail", {
-        product: product,
+        product,
         pageTitle: product.title,
         path: "/products",
       });
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
 };
 
 exports.getIndex = (req, res, next) => {
-  Product.find({})
+  const page = +req.query.page || 1;
+  const itemsPerPage = res.locals.itemsPerPage;
+  // * We set param into skip() to skip first X element from database
+  // * limit() set how many elements should be load from DB
+
+  Product.find()
+    .skip((page - 1) * itemsPerPage)
+    .limit(itemsPerPage)
     .then((products) => {
-      res.render("shop/index", {
-        prods: products,
-        pageTitle: "Shop",
-        path: "/",
-        informationMessages: req.session.flash ? req.flash("information") : [],
-      });
+      res.render(
+        "shop/index",
+        prepareShopProductsParams(req, res, true, products)
+      );
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
 };
 
@@ -87,14 +117,14 @@ exports.postCart = (req, res, next) => {
           return user.addToCart(product);
         })
         .catch((err) => {
-          throw err;
+          return errorHandler(req, res, next, err);
         });
     })
     .then(() => {
       res.redirect("/cart");
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
 };
 
@@ -109,7 +139,7 @@ exports.postDeleteCartItem = (req, res, next) => {
       res.redirect("/cart");
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
 };
 
@@ -119,12 +149,40 @@ exports.getOrders = (req, res, next) => {
       res.render("shop/orders", {
         path: "/orders",
         pageTitle: "Your Orders",
-        orders: orders,
+        orders,
+        errorMessages: req.flash("errors"),
       });
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
+};
+
+exports.getInvoice = (req, res, next) => {
+  const orderId = req.params.orderId;
+  const invoiceName = `invoice-${orderId}.pdf`;
+  const invoicePath = path.join("private", "invoices", invoiceName);
+
+  // ? Properly share file with user. By stream. ------------------
+
+  const file = fs.createReadStream(invoicePath);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    'inline; filename="' + invoiceName + '"'
+  );
+  file.pipe(res);
+
+  /** Example of share file with user by preload into memory all data.
+   * ! Avoid this solution in production. -------------------------
+  fs.readFile(invoicePath, (err, data) => {
+    if (err) {
+      next(err);
+    }
+    );
+    res.send(data);
+  });
+  */
 };
 
 exports.postOrder = (req, res, next) => {
@@ -133,11 +191,11 @@ exports.postOrder = (req, res, next) => {
     .then((user) => {
       return user.createOrder();
     })
-    .then(() => {
+    .then((result) => {
       res.redirect("/orders");
     })
     .catch((err) => {
-      throw err;
+      return errorHandler(req, res, next, err);
     });
 };
 

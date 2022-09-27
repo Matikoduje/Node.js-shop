@@ -1,110 +1,111 @@
-const mongoose = require( "mongoose" );
+const mongoose = require("mongoose");
 
 const Schema = mongoose.Schema;
 
-const Order = require( "./order" );
+const Order = require("./order");
 
-const userSchema = new Schema( {
-	name: {
-		type: String,
-		required: true,
-	},
-	email: {
-		type: String,
-		unique: true,
-		required: true,
-	},
-	password: {
-		type: String,
-		required: true,
-	},
-	resetToken: String,
-	resetTokenExpiration: Date,
-	cart: {
-		items: [
-			{
-				productId: {
-					type: Schema.Types.ObjectId,
-					ref: "Product",
-					required: true,
-				},
-				quantity: {
-					type: Number,
-					required: true,
-				},
-			},
-		],
-	},
-} );
+const userSchema = new Schema({
+  name: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    unique: true,
+    required: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  resetToken: String,
+  resetTokenExpiration: Date,
+  cart: {
+    items: [
+      {
+        productId: {
+          type: Schema.Types.ObjectId,
+          ref: "Product",
+          required: true,
+        },
+        quantity: {
+          type: Number,
+          required: true,
+        },
+      },
+    ],
+  },
+});
 
-userSchema.methods.addToCart = function ( product ) {
-	const cartProductIndex = this.cart.items.findIndex( ( cartProduct ) => {
-		return cartProduct.productId.toString() === product._id.toString();
-	} );
+userSchema.methods.addToCart = function (product) {
+  const cartProductIndex = this.cart.items.findIndex((cartProduct) => {
+    return cartProduct.productId.toString() === product._id.toString();
+  });
 
-	const updatedCartItems = [ ...this.cart.items ];
-	let newQuantity = 1;
-	if ( cartProductIndex >= 0 ) {
-		newQuantity = this.cart.items[cartProductIndex].quantity + 1;
-		updatedCartItems[cartProductIndex].quantity = newQuantity;
-	} else {
-		updatedCartItems.push( {
-			productId: product._id,
-			quantity: newQuantity,
-		} );
-	}
+  const updatedCartItems = [...this.cart.items];
+  let newQuantity = 1;
+  if (cartProductIndex >= 0) {
+    newQuantity = this.cart.items[cartProductIndex].quantity + 1;
+    updatedCartItems[cartProductIndex].quantity = newQuantity;
+  } else {
+    updatedCartItems.push({
+      productId: product._id,
+      quantity: newQuantity,
+    });
+  }
 
-	const updatedCart = {
-		items: updatedCartItems,
-	};
-	this.cart = updatedCart;
-	return this.save();
+  const updatedCart = {
+    items: updatedCartItems,
+  };
+  this.cart = updatedCart;
+  return this.save();
 };
 
-userSchema.methods.deleteItemFromCart = function ( productId ) {
-	const updatedCartItems = this.cart.items.filter( ( item ) => {
-		return item.productId.toString() !== productId.toString();
-	} );
+userSchema.methods.deleteItemFromCart = function (productId) {
+  const updatedCartItems = this.cart.items.filter((item) => {
+    return item.productId.toString() !== productId.toString();
+  });
 
-	const updatedCart = {
-		items: updatedCartItems,
-	};
+  const updatedCart = {
+    items: updatedCartItems,
+  };
 
-	this.cart = updatedCart;
-	return this.save();
+  this.cart = updatedCart;
+  return this.save();
 };
 
 userSchema.methods.clearCart = function () {
-	this.cart = { items: [] };
-	return this.save();
+  this.cart = { items: [] };
+  return this.save();
 };
 
 userSchema.methods.createOrder = function () {
-	const userOrderData = {
-		name: this.name,
-		userId: this._id,
-	};
+  const userOrderData = {
+    name: this.name,
+    userId: this._id,
+  };
 
-	const productOrderData = this.cart.items.map( ( item ) => {
-		return {
-			product: { ...item.productId._doc },
-			quantity: item.quantity,
-		};
-	} );
+  const productOrderData = this.cart.items.map((item) => {
+    return {
+      product: { ...item.productId._doc },
+      quantity: item.quantity,
+    };
+  });
 
-	const order = new Order( {
-		items: productOrderData,
-		user: userOrderData,
-	} );
+  const order = new Order({
+    items: productOrderData,
+    user: userOrderData,
+  });
 
-	return order
-		.save()
-		.then( () => {
-			return this.clearCart();
-		} )
-		.catch( ( err ) => {
-			throw err;
-		} );
+  return order
+    .save()
+    .then((order) => {
+      order.generateInvoice();
+      return this.clearCart();
+    })
+    .catch((err) => {
+      throw err;
+    });
 };
 
-module.exports = mongoose.model( "User", userSchema );
+module.exports = mongoose.model("User", userSchema);
